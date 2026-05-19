@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jyoti Cyber Hygiene Tool — Password Analyser</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    [data-theme="dark"] {
+      --bg:         #050510;
+      --bg2:        #0a0a1e;
+      --bg3:        #0f0f2a;
+      --border:     rgba(0,200,150,0.2);
+      --border-dim: rgba(0,200,150,0.08);
+      --text:       #e8e8f0;
+      --muted:      #3a3a5c;
+      --muted2:     #556688;
+      --accent:     #00ffc8;
+      --accent2:    #00c896;
+      --accent-dim: rgba(0,200,150,0.12);
+      --weak:       #ff4d6d;
+      --fair:       #ff9a3c;
+      --good:       #f9e25b;
+      --strong:     #00ffc8;
+      --grid-color: rgba(0,255,200,0.03);
+      --glow:       0 0 20px rgba(0,255,200,0.15);
+    }
+
+    [data-theme="light"] {
+      --bg:         #f0f4f8;
+      --bg2:        #ffffff;
+      --bg3:        #e8edf5;
+      --border:     rgba(0,120,90,0.3);
+      --border-dim: rgba(0,120,90,0.1);
+      --text:       #0a1628;
+      --muted:      #b0bec5;
+      --muted2:     #607d8b;
+      --accent:     #006e52;
+      --accent2:    #009977;
+      --accent-dim: rgba(0,153,119,0.1);
+      --weak:       #c62828;
+      --fair:       #e65100;
+      --good:       #827717;
+      --strong:     #006e52;
+      --grid-color: rgba(0,100,80,0.04);
+      --glow:       none;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1.5rem 3rem;
+      transition: background 0.4s, color 0.4s;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.15;
+      animation: scanline 6s linear infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes scanline { 0%{ top:-2px; } 100%{ top:100vh; } }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .page-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 860px) {
+      .page-layout {
+        grid-template-columns: minmax(320px, 420px) 1fr;
+        align-items: start;
+        gap: 16px;
+      }
+    }
+
+    .left-pane { display: flex; flex-direction: column; gap: 12px; }
+    .right-pane { display: flex; flex-direction: column; gap: 12px; }
+
+    .hex-card {
+      position: relative;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 18px 20px;
+      clip-path: polygon(
+        0 14px, 14px 0,
+        calc(100% - 14px) 0, 100% 14px,
+        100% calc(100% - 14px), calc(100% - 14px) 100%,
+        14px 100%, 0 calc(100% - 14px)
+      );
+      transition: background 0.4s, border-color 0.4s;
+    }
+
+    .hex-card::before, .hex-card::after {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      pointer-events: none;
+    }
+    .hex-card::before { top:0; left:0; border-top:1.5px solid var(--accent); border-left:1.5px solid var(--accent); }
+    .hex-card::after  { bottom:0; right:0; border-bottom:1.5px solid var(--accent); border-right:1.5px solid var(--accent); }
+
+    .sec-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--accent2);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .eyebrow {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--accent2);
+      letter-spacing: 3px;
+      margin-bottom: 6px;
+    }
+
+    .main-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      line-height: 1.1;
+    }
+
+    .main-title span { color: var(--accent); }
+
+    @media (min-width: 860px) {
+      .main-title { font-size: 28px; }
+    }
+
+    #theme-btn {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--accent2);
+      border: 1px solid var(--border);
+      background: var(--accent-dim);
+      padding: 8px 16px;
+      cursor: pointer;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+    #theme-btn:hover { background: var(--accent2); color: var(--bg); }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .status-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--accent2);
+      letter-spacing: 2px;
+    }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .input-row { display: flex; align-items: stretch; gap: 8px; }
+
+    #password-input {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 15px;
+      color: var(--accent);
+      letter-spacing: 3px;
+      outline: none;
+      clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+      transition: border-color 0.3s, background 0.4s;
+    }
+    #password-input::placeholder { color: var(--muted); letter-spacing: 1px; }
+    #password-input:focus { border-color: var(--accent); }
+
+    #vis-btn {
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      letter-spacing: 1px;
+      color: var(--accent2);
+      border: 1px solid var(--border);
+      background: var(--accent-dim);
+      padding: 10px 14px;
+      cursor: pointer;
+      clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    #vis-btn:hover { background: var(--accent2); color: var(--bg); }
+
+    .str-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    #strength-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--muted);
+      transition: color 0.4s;
+    }
+
+    .bar-track { height: 4px; background: var(--bg3); position: relative; margin-bottom: 8px; }
+
+    #meter-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--weak);
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background 0.4s;
+    }
+
+    .bar-ticks { display: flex; justify-content: space-between; }
+    .bar-tick { font-family: 'Share Tech Mono', monospace; font-size: 8px; color: var(--muted); letter-spacing: 0.5px; }
+
+    .cyber-alert {
+      padding: 9px 16px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      line-height: 1.5;
+      display: none;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+      animation: alertIn 0.25s ease;
+    }
+    @keyframes alertIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
+    .cyber-alert.visible { display: block; }
+    .alert-danger { background: rgba(255,77,109,0.1); border: 1px solid rgba(255,77,109,0.4); color: #ff4d6d; }
+    .alert-warn   { background: rgba(255,154,60,0.1); border: 1px solid rgba(255,154,60,0.4); color: #ff9a3c; }
+    .alert-ok     { background: rgba(0,200,150,0.08); border: 1px solid rgba(0,200,150,0.3); color: var(--accent2); }
+
+    #empty-state {
+      text-align: center;
+      padding: 3rem 0;
+    }
+    .empty-icon { font-family: 'Orbitron', monospace; font-size: 32px; color: var(--muted); margin-bottom: 12px; letter-spacing: 4px; }
+    .empty-text { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 2px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    @media (min-width: 860px) {
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .stat-card {
+      background: var(--bg3);
+      border: 1px solid var(--border-dim);
+      padding: 14px 12px;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s, transform 0.4s, background 0.4s;
+    }
+    .stat-card.visible { opacity:1; transform:translateY(0); }
+    .stat-lbl { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--accent2); margin-bottom: 6px; }
+    .stat-val { font-family: 'Orbitron', monospace; font-size: 20px; font-weight: 600; color: var(--text); line-height: 1; }
+    .stat-unit { font-family: 'Share Tech Mono', monospace; font-size: 8px; color: var(--muted2); margin-top: 4px; letter-spacing: 1px; }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    .inner-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 16px;
+      clip-path: polygon(
+        0 10px, 10px 0,
+        calc(100% - 10px) 0, 100% 10px,
+        100% calc(100% - 10px), calc(100% - 10px) 100%,
+        10px 100%, 0 calc(100% - 10px)
+      );
+      transition: background 0.4s;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--muted2);
+      padding: 5px 0;
+      transition: color 0.3s;
+    }
+    .check-item.passed { color: var(--accent); }
+    .check-diamond {
+      width: 9px; height: 9px;
+      background: var(--bg3);
+      border: 1px solid var(--muted);
+      transform: rotate(45deg);
+      flex-shrink: 0;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .check-item.passed .check-diamond { background: var(--accent2); border-color: var(--accent); }
+
+    .gen-len-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .gen-len-row span { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted2); letter-spacing: 1px; }
+    .gen-len-row input[type=range] { flex: 1; accent-color: var(--accent2); }
+    #gen-len-val { font-family: 'Orbitron', monospace; font-size: 12px; color: var(--accent); min-width: 20px; }
+
+    .gen-toggles { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+    .gen-tog {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border: 1px solid var(--muted);
+      background: transparent;
+      color: var(--muted2);
+      cursor: pointer;
+      clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+      transition: all 0.2s;
+    }
+    .gen-tog.on { background: var(--accent-dim); border-color: var(--accent2); color: var(--accent); }
+
+    #gen-btn {
+      width: 100%;
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--accent);
+      border: 1px solid var(--border);
+      background: var(--accent-dim);
+      padding: 9px;
+      cursor: pointer;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+      margin-bottom: 8px;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    #gen-btn:hover { background: var(--accent2); color: var(--bg); }
+
+    .gen-result {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg3);
+      border: 1px solid var(--border-dim);
+      padding: 8px 12px;
+      clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+    }
+    #gen-output { flex: 1; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 1px; word-break: break-all; }
+    #copy-btn { background: none; border: none; color: var(--muted2); cursor: pointer; font-size: 14px; flex-shrink: 0; transition: color 0.2s; }
+    #copy-btn:hover { color: var(--accent); }
+
+    #timeline-canvas { width: 100%; height: 80px; display: block; }
+
+    .attack-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 72px;
+      margin-bottom: 8px;
+    }
+    .atk-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; }
+    .atk-time { font-family: 'Share Tech Mono', monospace; font-size: 8px; color: var(--accent2); text-align: center; }
+    .atk-bar { width: 100%; border-radius: 2px 2px 0 0; min-height: 3px; transition: height 0.5s cubic-bezier(0.4,0,0.2,1); }
+    .atk-lbl { font-family: 'Share Tech Mono', monospace; font-size: 8px; color: var(--muted2); letter-spacing: 1px; }
+
+    #suggestions-wrap { display: none; }
+    #suggestions-wrap.visible { display: block; }
+    #sug-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    #sug-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted2);
+      line-height: 1.5;
+      letter-spacing: 0.3px;
+    }
+    #sug-list li::before { content: '▸'; color: var(--fair); flex-shrink: 0; margin-top: 1px; }
+
+    .footer {
+      text-align: center;
+      margin-top: 24px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 2px;
+    }
+
+    @media (max-width: 500px) {
+      .main-title  { font-size: 16px; }
+      .stats-grid  { grid-template-columns: 1fr 1fr; }
+      body         { padding: 1rem 0.75rem 2rem; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="topbar">
+    <div>
+      <div class="eyebrow">// JYOTI CYBER HYGIENE TOOL</div>
+      <div class="main-title">PASSWORD <span>ANALYSER</span></div>
+    </div>
+    <button id="theme-btn" onclick="toggleTheme()">☀ LIGHT</button>
+  </div>
+
+  <div class="status-row">
+    <div class="status-dot"></div>
+    <div class="status-text">SYSTEM ONLINE — REAL-TIME ANALYSIS ACTIVE</div>
+  </div>
+
+  <div class="page-layout">
+
+    <!-- LEFT PANE -->
+    <div class="left-pane">
+
+      <!-- INPUT CARD -->
+      <div class="hex-card">
+        <div class="sec-label">// INPUT_PASSWORD</div>
+        <div class="input-row">
+          <input
+            type="password"
+            id="password-input"
+            placeholder="TYPE YOUR PASSWORD..."
+            oninput="analysePassword()"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="vis-btn" onclick="toggleVis()">SHOW</button>
+        </div>
+      </div>
+
+      <!-- ALERTS -->
+      <div class="cyber-alert alert-danger" id="alert-common">
+        ⛔ CRITICAL :: <span id="alert-common-text"></span>
+      </div>
+      <div class="cyber-alert alert-warn" id="alert-pattern">
+        ⚠ PATTERN_DETECTED :: <span id="alert-pattern-text"></span>
+      </div>
+
+      <!-- STRENGTH METER CARD -->
+      <div class="hex-card">
+        <div class="str-header">
+          <div class="sec-label" style="margin:0">// STRENGTH_LEVEL</div>
+          <div id="strength-label">——</div>
+        </div>
+        <div class="bar-track">
+          <div id="meter-fill"></div>
+        </div>
+        <div class="bar-ticks">
+          <span class="bar-tick">V.WEAK</span>
+          <span class="bar-tick">WEAK</span>
+          <span class="bar-tick">FAIR</span>
+          <span class="bar-tick">GOOD</span>
+          <span class="bar-tick">STRONG</span>
+          <span class="bar-tick">MAX</span>
+        </div>
+      </div>
+
+      <!-- GENERATOR -->
+      <div class="hex-card" id="generator-card">
+        <div class="sec-label">// PWD_GENERATOR</div>
+        <div class="gen-len-row">
+          <span>LEN</span>
+          <input type="range" id="gen-len" min="8" max="32" value="16"
+            oninput="document.getElementById('gen-len-val').textContent=this.value"/>
+          <span id="gen-len-val">16</span>
+        </div>
+        <div class="gen-toggles">
+          <button class="gen-tog on" id="tog-u" onclick="this.classList.toggle('on')">A–Z</button>
+          <button class="gen-tog on" id="tog-l" onclick="this.classList.toggle('on')">a–z</button>
+          <button class="gen-tog on" id="tog-n" onclick="this.classList.toggle('on')">0–9</button>
+          <button class="gen-tog on" id="tog-s" onclick="this.classList.toggle('on')">!@#</button>
+        </div>
+        <button id="gen-btn" onclick="generatePassword()">⚡ GENERATE</button>
+        <div class="gen-result">
+          <span id="gen-output">CLICK GENERATE</span>
+          <button id="copy-btn" onclick="copyPassword()" title="Copy">📋</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANE -->
+    <div class="right-pane">
+
+      <!-- EMPTY STATE -->
+      <div id="empty-state">
+        <div class="empty-icon">[  🔐  ]</div>
+        <div class="empty-text">// AWAITING INPUT — BEGIN TYPING TO INITIALISE</div>
+      </div>
+
+      <!-- ALL RESULTS -->
+      <div id="results" style="display:none; flex-direction:column; gap:12px;">
+
+        <!-- 3 STAT CARDS -->
+        <div class="stats-grid">
+          <div class="stat-card" id="card-score">
+            <div class="stat-lbl">SCORE</div>
+            <div class="stat-val" id="val-score">0</div>
+            <div class="stat-unit">/ 100 PTS</div>
+          </div>
+          <div class="stat-card" id="card-entropy">
+            <div class="stat-lbl">ENTROPY</div>
+            <div class="stat-val" id="val-entropy">0</div>
+            <div class="stat-unit">BITS</div>
+          </div>
+          <div class="stat-card" id="card-crack">
+            <div class="stat-lbl">CRACK_TIME</div>
+            <div class="stat-val" id="val-crack" style="font-size:14px;padding-top:4px">——</div>
+            <div class="stat-unit">@ 10B GUESS/SEC</div>
+          </div>
+        </div>
+
+        <!-- CHAR CHECKS + ATTACK BREAKDOWN -->
+        <div class="two-col">
+
+          <!-- CHARACTER CHECKS -->
+          <div class="inner-card">
+            <div class="sec-label">// CHAR_ANALYSIS</div>
+            <div class="check-item" id="chk-upper"><div class="check-diamond"></div>UPPERCASE A–Z</div>
+            <div class="check-item" id="chk-lower"><div class="check-diamond"></div>LOWERCASE a–z</div>
+            <div class="check-item" id="chk-num"><div class="check-diamond"></div>NUMBERS 0–9</div>
+            <div class="check-item" id="chk-sym"><div class="check-diamond"></div>SYMBOLS !@#$</div>
+          </div>
+
+          <!-- ATTACK BREAKDOWN -->
+          <div class="inner-card">
+            <div class="sec-label">// ATTACK_BREAKDOWN</div>
+            <div class="attack-bars">
+              <div class="atk-col">
+                <div class="atk-time" id="atk-t0">—</div>
+                <div class="atk-bar" id="atk-b0" style="background:#ff4d6d;height:3px"></div>
+                <div class="atk-lbl">DICT</div>
+              </div>
+              <div class="atk-col">
+                <div class="atk-time" id="atk-t1">—</div>
+                <div class="atk-bar" id="atk-b1" style="background:#ff9a3c;height:3px"></div>
+                <div class="atk-lbl">HYBRID</div>
+              </div>
+              <div class="atk-col">
+                <div class="atk-time" id="atk-t2">—</div>
+                <div class="atk-bar" id="atk-b2" style="background:#f9e25b;height:3px"></div>
+                <div class="atk-lbl">MASK</div>
+              </div>
+              <div class="atk-col">
+                <div class="atk-time" id="atk-t3">—</div>
+                <div class="atk-bar" id="atk-b3" style="background:#00ffc8;height:3px"></div>
+                <div class="atk-lbl">BRUTE</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- LIVE TIMELINE -->
+        <div class="inner-card">
+          <div class="sec-label">// STRENGTH_TIMELINE</div>
+          <canvas id="timeline-canvas" height="80"></canvas>
+        </div>
+
+        <!-- SUGGESTIONS -->
+        <div id="suggestions-wrap">
+          <div class="hex-card" style="margin-bottom:0">
+            <div class="sec-label">// RECOMMENDATIONS</div>
+            <ul id="sug-list"></ul>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="footer">
+    // JYOTI CYBER HYGIENE TOOL · POWERED BY ENTROPY ANALYSIS · v1.0.0
+  </div>
+
+</div>
+
+<script>
+  const COMMON = new Set([
+    'password','123456','password123','12345678','qwerty',
+    'abc123','monkey','1234567','letmein','trustno1',
+    'dragon','baseball','iloveyou','master','sunshine',
+    'ashley','bailey','passw0rd','shadow','123123',
+    '654321','superman','qazwsx','michael','football',
+    'welcome','login','admin','admin123','root','toor',
+    'pass','test','guest','111111','000000','1q2w3e4r',
+    'qwertyuiop','password1','123456789','12345','1234',
+    '1234567890','qwerty123','pass123','hello','hello123',
+    'dragon123','master123','letmein1','shadow123',
+    'sunshine1','princess','welcome1','football1','monkey1',
+    'qwerty1','iloveyou1','superman1','654321a','password!'
+  ]);
+
+  const PATTERNS = [
+    { test: p => /012|123|234|345|456|567|678|789|890/.test(p), msg: 'Sequential numbers (e.g. "123")' },
+    { test: p => /abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl/i.test(p), msg: 'Sequential letters (e.g. "abc")' },
+    { test: p => /qwer|wert|erty|rtyu|asdf|sdfg|dfgh|zxcv|xcvb/i.test(p), msg: 'Keyboard walk (e.g. "qwerty")' },
+    { test: p => /19\d{2}|20\d{2}/.test(p), msg: 'Year pattern (e.g. "2024")' },
+    { test: p => /(.)\1{2,}/.test(p), msg: 'Repeated characters (e.g. "aaa")' },
+    { test: p => { if(p.length < 6) return false; const h = Math.floor(p.length/2); return p.slice(0,h) === p.slice(h,h*2); }, msg: 'Repeated chunk (e.g. "abcabc")' }
+  ];
+
+  const POOL = {
+    u: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    l: 'abcdefghijklmnopqrstuvwxyz',
+    n: '0123456789',
+    s: '!@#$%^&*()-_=+[]{}|;:,.<>?'
+  };
+
+  let history = [];
+
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('theme-btn').textContent = isDark ? '🌙 DARK' : '☀ LIGHT';
+    drawTimeline();
+  }
+
+  function toggleVis() {
+    const inp = document.getElementById('password-input');
+    const btn = document.getElementById('vis-btn');
+    const isHidden = inp.type === 'password';
+    inp.type = isHidden ? 'text' : 'password';
+    btn.textContent = isHidden ? 'HIDE' : 'SHOW';
+  }
+
+  function charInfo(pw) {
+    const hasU = /[A-Z]/.test(pw);
+    const hasL = /[a-z]/.test(pw);
+    const hasN = /[0-9]/.test(pw);
+    const hasS = /[^a-zA-Z0-9]/.test(pw);
+    let pool = 0;
+    if(hasU) pool += 26;
+    if(hasL) pool += 26;
+    if(hasN) pool += 10;
+    if(hasS) pool += 32;
+    return { hasU, hasL, hasN, hasS, pool };
+  }
+
+  function entropy(pw, pool) {
+    if(!pool || !pw.length) return 0;
+    return Math.log2(pool) * pw.length;
+  }
+
+  function fmtTime(s) {
+    if(s <= 0)      return 'INSTANT';
+    if(s < 1)       return '<1S';
+    if(s < 60)      return Math.round(s) + 'S';
+    if(s < 3600)    return Math.round(s/60) + 'MIN';
+    if(s < 86400)   return Math.round(s/3600) + 'HRS';
+    if(s < 31536e3) return Math.round(s/86400) + 'D';
+    if(s < 3.15e9)  return Math.round(s/31536e3) + 'YR';
+    if(s < 3.15e12) return Math.round(s/3.15e9) + 'KYR';
+    if(s < 3.15e15) return Math.round(s/3.15e12) + 'MYR';
+    return '∞';
+  }
+
+  function crackSec(pw, pool, speed) {
+    if(!pool || !pw.length) return 0;
+    return Math.pow(pool, pw.length) / speed;
+  }
+
+  function score(pw, ent, info) {
+    let s = Math.min(60, ent * 0.5);
+    if(info.hasU) s += 7;
+    if(info.hasL) s += 7;
+    if(info.hasN) s += 7;
+    if(info.hasS) s += 9;
+    if(pw.length >= 12) s += 5;
+    if(pw.length >= 16) s += 5;
+    if(new Set(pw).size === 1) s -= 20;
+    PATTERNS.forEach(p => { if(p.test(pw)) s -= 8; });
+    if(COMMON.has(pw.toLowerCase())) s = 5;
+    return Math.max(0, Math.min(100, Math.round(s)));
+  }
+
+  function level(sc) {
+    if(sc < 20) return { lbl:'V.WEAK',      col:'var(--weak)',   pct:10  };
+    if(sc < 40) return { lbl:'WEAK',        col:'var(--weak)',   pct:28  };
+    if(sc < 60) return { lbl:'FAIR',        col:'var(--fair)',   pct:52  };
+    if(sc < 75) return { lbl:'GOOD',        col:'var(--good)',   pct:72  };
+    if(sc < 90) return { lbl:'STRONG',      col:'var(--strong)', pct:88  };
+    return             { lbl:'VERY STRONG', col:'var(--accent)', pct:100 };
+  }
+
+  function suggestions(pw, info, sc) {
+    const t = [];
+    if(pw.length < 12)       t.push('Use at least 12 characters — length is the single biggest factor.');
+    if(!info.hasU)             t.push('Add uppercase letters (A–Z) to expand the character pool.');
+    if(!info.hasL)             t.push('Add lowercase letters (a–z).');
+    if(!info.hasN)             t.push('Include at least one number (0–9).');
+    if(!info.hasS)             t.push('Add a symbol (!@#$) — it massively increases entropy.');
+    if(new Set(pw).size < 5)  t.push('Use more unique characters — avoid repeating the same ones.');
+    if(sc >= 90)               t.push('Outstanding — this password is extremely difficult to crack.');
+    return t;
+  }
+
+  function updateAttackBars(pw, pool) {
+    const attacks = [
+      { speed:1e6,  id:0 },
+      { speed:1e7,  id:1 },
+      { speed:1e9,  id:2 },
+      { speed:1e10, id:3 }
+    ];
+    const MAX_LOG = 15;
+    attacks.forEach(({ speed, id }) => {
+      const s   = crackSec(pw, pool, speed);
+      const log = Math.log10(s + 1);
+      const h   = Math.max(3, (log / MAX_LOG) * 60);
+      document.getElementById('atk-b'+id).style.height = h + 'px';
+      document.getElementById('atk-t'+id).textContent  = fmtTime(s);
+    });
+  }
+
+  function drawTimeline() {
+    const canvas = document.getElementById('timeline-canvas');
+    if(!canvas) return;
+    const W  = canvas.offsetWidth || 400;
+    const H  = 80;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, H);
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridCol = isDark ? 'rgba(0,200,150,0.06)' : 'rgba(0,120,80,0.08)';
+    const lineCol = isDark ? '#00ffc8' : '#006e52';
+
+    ctx.strokeStyle = gridCol;
+    ctx.lineWidth   = 0.5;
+    [0.25, 0.5, 0.75].forEach(t => {
+      ctx.beginPath();
+      ctx.moveTo(0, H*t);
+      ctx.lineTo(W, H*t);
+      ctx.stroke();
+    });
+
+    if(history.length < 2) {
+      ctx.fillStyle = isDark ? '#2a2a4a' : '#aab';
+      ctx.font = '9px "Share Tech Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('// TYPE TO SEE TIMELINE', W/2, H/2 + 4);
+      return;
+    }
+
+    const yFor = sc => H - 4 - (sc/100) * (H - 10);
+    const xFor = i  => (i / (history.length - 1)) * W;
+
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, lineCol + '44');
+    grad.addColorStop(1, lineCol + '00');
+    ctx.beginPath();
+    ctx.moveTo(xFor(0), yFor(history[0]));
+    history.forEach((s,i) => ctx.lineTo(xFor(i), yFor(s)));
+    ctx.lineTo(xFor(history.length-1), H);
+    ctx.lineTo(0, H);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(xFor(0), yFor(history[0]));
+    history.forEach((s,i) => ctx.lineTo(xFor(i), yFor(s)));
+    ctx.strokeStyle = lineCol;
+    ctx.lineWidth   = 1.5;
+    ctx.lineJoin    = 'round';
+    ctx.lineCap     = 'round';
+    ctx.stroke();
+
+    const lx = xFor(history.length-1);
+    const ly = yFor(history[history.length-1]);
+    ctx.beginPath();
+    ctx.arc(lx, ly, 3, 0, Math.PI*2);
+    ctx.fillStyle = lineCol;
+    ctx.fill();
+  }
+
+  function generatePassword() {
+    const len  = parseInt(document.getElementById('gen-len').value);
+    const useU = document.getElementById('tog-u').classList.contains('on');
+    const useL = document.getElementById('tog-l').classList.contains('on');
+    const useN = document.getElementById('tog-n').classList.contains('on');
+    const useS = document.getElementById('tog-s').classList.contains('on');
+
+    let poolStr = '';
+    const guaranteed = [];
+
+    if (useU) { poolStr += POOL.u; guaranteed.push(POOL.u[cryptoRandomInt(POOL.u.length)]); }
+    if (useL) { poolStr += POOL.l; guaranteed.push(POOL.l[cryptoRandomInt(POOL.l.length)]); }
+    if (useN) { poolStr += POOL.n; guaranteed.push(POOL.n[cryptoRandomInt(POOL.n.length)]); }
+    if (useS) { poolStr += POOL.s; guaranteed.push(POOL.s[cryptoRandomInt(POOL.s.length)]); }
+
+    if (poolStr.length === 0) {
+      document.getElementById('gen-output').textContent = 'SELECT AT LEAST ONE POOL';
+      return;
+    }
+
+    let generatedArr = [...guaranteed];
+    while (generatedArr.length < len) {
+      const rIdx = cryptoRandomInt(poolStr.length);
+      generatedArr.push(poolStr[rIdx]);
+    }
+
+    // Shuffle the array elements cryptographically
+    for (let i = generatedArr.length - 1; i > 0; i--) {
+      const j = cryptoRandomInt(i + 1);
+      [generatedArr[i], generatedArr[j]] = [generatedArr[j], generatedArr[i]];
+    }
+
+    const securePassword = generatedArr.join('');
+    document.getElementById('gen-output').textContent = securePassword;
+  }
+
+  function cryptoRandomInt(max) {
+    const array = new Uint32Array(1);
+    window.crypto.getRandomValues(array);
+    return array[0] % max;
+  }
+
+  function copyPassword() {
+    const outputText = document.getElementById('gen-output').textContent;
+    if (outputText === 'CLICK GENERATE' || outputText === 'SELECT AT LEAST ONE POOL') return;
+    
+    navigator.clipboard.writeText(outputText).then(() => {
+      const copyBtn = document.getElementById('copy-btn');
+      copyBtn.textContent = '✅';
+      setTimeout(() => copyBtn.textContent = '📋', 1200);
+    }).catch(err => {
+      console.error('Failed to copy configuration', err);
+    });
+  }
+
+  function analysePassword() {
+    const pw = document.getElementById('password-input').value;
+    const emptyState = document.getElementById('empty-state');
+    const resultsWrap = document.getElementById('results');
+
+    if (!pw || pw.length === 0) {
+      emptyState.style.display = 'block';
+      resultsWrap.style.display = 'none';
+      document.getElementById('strength-label').textContent = '——';
+      document.getElementById('meter-fill').style.width = '0%';
+      document.getElementById('alert-common').classList.remove('visible');
+      document.getElementById('alert-pattern').classList.remove('visible');
+      history = [];
+      return;
+    }
+
+    emptyState.style.display = 'none';
+    resultsWrap.style.display = 'flex';
+
+    // Character metrics
+    const info = charInfo(pw);
+    const ent = entropy(pw, info.pool);
+    const calculatedScore = score(pw, ent, info);
+    const lvl = level(calculatedScore);
+
+    // Dynamic historical timeline plotting state tracker
+    history.push(calculatedScore);
+    if (history.length > 50) history.shift();
+
+    // UI Updates
+    document.getElementById('strength-label').textContent = lvl.lbl;
+    document.getElementById('strength-label').style.color = lvl.col;
+    
+    const fill = document.getElementById('meter-fill');
+    fill.style.width = lvl.pct + '%';
+    fill.style.background = lvl.col;
+
+    document.getElementById('val-score').textContent = calculatedScore;
+    document.getElementById('val-entropy').textContent = Math.round(ent);
+    document.getElementById('val-crack').textContent = fmtTime(crackSec(pw, info.pool, 1e10));
+
+    // Card state indicators
+    togglePassStatus('chk-upper', info.hasU);
+    togglePassStatus('chk-lower', info.hasL);
+    togglePassStatus('chk-num', info.hasN);
+    togglePassStatus('chk-sym', info.hasS);
+
+    // Warning System Alerts Engine
+    const isCommon = COMMON.has(pw.toLowerCase());
+    const commonAlert = document.getElementById('alert-common');
+    if (isCommon) {
+      document.getElementById('alert-common-text').textContent = 'Known compromised database password entry detected.';
+      commonAlert.classList.add('visible');
+    } else {
+      commonAlert.classList.remove('visible');
+    }
+
+    let matchedPatternMsg = '';
+    for (const pattern of PATTERNS) {
+      if (pattern.test(pw)) {
+        matchedPatternMsg = pattern.msg;
+        break;
+      }
+    }
+    
+    const patternAlert = document.getElementById('alert-pattern');
+    if (matchedPatternMsg) {
+      document.getElementById('alert-pattern-text').textContent = matchedPatternMsg;
+      patternAlert.classList.add('visible');
+    } else {
+      patternAlert.classList.remove('visible');
+    }
+
+    // Recommendation Parser Engine
+    const recWrap = document.getElementById('suggestions-wrap');
+    const recList = document.getElementById('sug-list');
+    recList.innerHTML = '';
+    const recs = suggestions(pw, info, calculatedScore);
+    
+    if (recs.length > 0) {
+      recWrap.classList.add('visible');
+      recs.forEach(txt => {
+        const li = document.createElement('li');
+        li.textContent = txt;
+        recList.appendChild(li);
+      });
+    } else {
+      recWrap.classList.remove('visible');
+    }
+
+    // Secondary UI Subsystems rendering execution routines
+    updateAttackBars(pw, info.pool);
+    drawTimeline();
+    triggerStatCardsAnimation();
+  }
+
+  function togglePassStatus(id, passed) {
+    const el = document.getElementById(id);
+    if (passed) {
+      el.classList.add('passed');
+    } else {
+      el.classList.remove('passed');
+    }
+  }
+
+  function triggerStatCardsAnimation() {
+    const cards = ['card-score', 'card-entropy', 'card-crack'];
+    cards.forEach((id, index) => {
+      const card = document.getElementById(id);
+      if (!card.classList.contains('visible')) {
+        setTimeout(() => {
+          card.classList.add('visible');
+        }, index * 80);
+      }
+    });
+  }
+
+  // Handle window configuration resizing runtime execution safety checks
+  window.addEventListener('resize', () => {
+    if (history.length > 0) drawTimeline();
+  });
+
+  // Initial runtime setup checks
+  window.onload = () => {
+    drawTimeline();
+  };
+</script>
+</body>
+</html>
